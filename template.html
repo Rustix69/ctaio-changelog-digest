@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code: what changed behavior | ctaio.dev</title>
+<meta name="description" content="The Claude Code changelog filtered to entries that change how it behaves: removals, new prompts and refusals, regressions. Rebuilt daily from the official source.">
+<meta property="og:title" content="Claude Code: what changed behavior">
+<meta property="og:description" content="Changelog entries that can change how your setup behaves after an upgrade, filtered from the official source.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--paper:#F7F8FA;--ink:#18202B;--muted:#5E6875;--line:#DDE2E8;--accent:#2E5E8C;--flag:#A1500B;--flagbg:#FBF1E6;--code:#EDF0F4}
+@media (prefers-color-scheme:dark){:root{--paper:#14181E;--ink:#E4E8ED;--muted:#97A1AD;--line:#2A313B;--accent:#7FAADB;--flag:#E8A060;--flagbg:#2A2118;--code:#212833}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:46rem;margin:0 auto;padding:3rem 1.25rem 5rem}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.from{color:var(--muted);font-size:.9rem;margin:0}
+h1{font-size:clamp(1.7rem,4.5vw,2.4rem);line-height:1.2;font-weight:600;margin:.5rem 0 1rem;letter-spacing:-.01em}
+h1 b{color:var(--flag);font-weight:600}
+.lede{color:var(--muted);margin:0 0 2rem;max-width:38rem}
+.controls{position:sticky;top:0;background:var(--paper);padding:.75rem 0;border-bottom:1px solid var(--line);z-index:1}
+.row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.row+.row{margin-top:.6rem}
+button{font:inherit;font-size:.85rem;padding:.3rem .7rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;cursor:pointer}
+button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+input[type=search]{font:inherit;font-size:.9rem;flex:1;min-width:12rem;padding:.4rem .7rem;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)}
+.count{font-size:.85rem;color:var(--muted);margin-left:auto}
+section{margin-top:2.25rem}
+h2{font-size:1.05rem;font-weight:600;margin:0 0 .5rem}
+h2 a{color:inherit;text-decoration:none}
+h2 a:hover{text-decoration:underline}
+ul{list-style:none;margin:0;padding:0}
+li{display:grid;grid-template-columns:1.25rem 1fr;gap:.25rem;padding:.4rem 0;border-top:1px solid var(--line)}
+li .g{color:var(--muted);text-align:center}
+li.b{background:var(--flagbg)}
+li.b .g{color:var(--flag);font-weight:600}
+code{font:.85em "IBM Plex Mono",ui-monospace,monospace;background:var(--code);padding:.05em .3em;border-radius:3px;overflow-wrap:anywhere}
+.tags{font-size:.8rem;color:var(--muted)}
+.empty{color:var(--muted);margin-top:2rem}
+footer{margin-top:4rem;font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:1rem}
+</style>
+</head>
+<body>
+<main>
+<p class="from">A <a href="https://ctaio.dev">ctaio.dev</a> tool, rebuilt daily from the official changelog</p>
+<h1 id="headline">Claude Code: what changed behavior</h1>
+<p class="lede">Most changelog lines are bug fixes you'll never notice. The ones marked <b style="color:var(--flag)">!</b> are different: something was removed, renamed, now prompts or refuses, or a regression was fixed. Those are the lines to read before you upgrade a team.</p>
+
+<div class="controls" role="search">
+  <div class="row">
+    <button id="only" aria-pressed="true">Behavior changes only</button>
+    <input id="q" type="search" placeholder="Search, e.g. PreToolUse, .mcp.json, sandbox" aria-label="Search entries">
+  </div>
+  <div class="row" id="areas" aria-label="Filter by area"></div>
+  <div class="row"><span class="count" id="count" aria-live="polite"></span></div>
+</div>
+
+<div id="list"></div>
+
+<footer id="foot"></footer>
+</main>
+<script>
+const DATA = /*DATA*/null;
+const {meta, releases} = DATA;
+const state = {only: true, area: null, q: ""};
+const $ = id => document.getElementById(id);
+
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+
+$("headline").innerHTML = `<b>${meta.flagged}</b> of ${meta.total} recent Claude Code changelog entries change how it behaves`;
+
+const areaBox = $("areas");
+meta.areas.forEach(a => {
+  const b = document.createElement("button");
+  b.textContent = a; b.setAttribute("aria-pressed", "false");
+  b.onclick = () => { state.area = state.area === a ? null : a; render(); };
+  areaBox.appendChild(b);
+});
+$("only").onclick = () => { state.only = !state.only; render(); };
+$("q").oninput = e => { state.q = e.target.value.trim().toLowerCase(); render(); };
+
+function render() {
+  $("only").setAttribute("aria-pressed", state.only);
+  [...areaBox.children].forEach(b => b.setAttribute("aria-pressed", b.textContent === state.area));
+  let shown = 0, out = "";
+  for (const r of releases) {
+    const items = r.items.filter(i =>
+      (!state.only || i.b) &&
+      (!state.area || i.a.includes(state.area)) &&
+      (!state.q || i.t.toLowerCase().includes(state.q)));
+    if (!items.length) continue;
+    shown += items.length;
+    out += `<section><h2><a href="${meta.blob}#${r.anchor}" title="Open in the official changelog">${esc(r.v)}</a></h2><ul>` +
+      items.map(i => `<li class="${i.b ? "b" : ""}"><span class="g" aria-label="${i.b ? "behavior change" : ""}">${i.b ? "!" : "·"}</span>` +
+        `<span>${fmt(i.t)}${i.a.length ? ` <span class="tags">${i.a.join(", ")}</span>` : ""}</span></li>`).join("") +
+      `</ul></section>`;
+  }
+  $("list").innerHTML = out || `<p class="empty">Nothing matches. Try turning off "Behavior changes only".</p>`;
+  $("count").textContent = `${shown} entries shown`;
+  const h = new URLSearchParams();
+  if (!state.only) h.set("all", "1");
+  if (state.area) h.set("area", state.area);
+  if (state.q) h.set("q", state.q);
+  history.replaceState(null, "", h.toString() ? "#" + h : location.pathname);
+}
+
+// Restore filters from a shared link
+const p = new URLSearchParams(location.hash.slice(1));
+if (p.get("all")) state.only = false;
+if (meta.areas.includes(p.get("area"))) state.area = p.get("area");
+if (p.get("q")) { state.q = p.get("q"); $("q").value = state.q; }
+render();
+
+$("foot").innerHTML = `Releases ${esc(meta.range)}. Built ${esc(meta.built)}` +
+  (meta.sha ? ` from <a href="https://github.com/anthropics/claude-code/commit/${meta.sha}">${meta.sha}</a> (${meta.date})` : "") +
+  `. Flags come from keyword rules, so they can miss things or over-flag. Every version links to the <a href="${meta.blob}">source</a>. ` +
+  `<a href="https://github.com/Rustix69/ctaio-changelog-digest">Code</a>.`;
+</script>
+</body>
+</html>
